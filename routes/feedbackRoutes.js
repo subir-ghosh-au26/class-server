@@ -6,6 +6,18 @@ const upload = multer({ storage: multer.memoryStorage() });
 const { protect } = require("../middleware/authMiddleware");
 const { body, validationResult } = require("express-validator");
 const logger = require("../config/logger");
+const nodemailer = require("nodemailer");
+require("dotenv").config();
+
+const transporter = nodemailer.createTransport({
+  host: process.env.MAIL_HOST,
+  port: process.env.MAIL_PORT,
+  secure: true,
+  auth: {
+    user: process.env.MAIL_USER,
+    pass: process.env.MAIL_PASS,
+  },
+});
 
 router.post(
   "/",
@@ -15,7 +27,6 @@ router.post(
     body("batch", "Batch is required").notEmpty(),
     body("feedback", "Feedback is required").notEmpty(),
   ],
-
   async (req, res) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -41,6 +52,24 @@ router.post(
       await newFeedback.save();
       res.status(201).json({ message: "Feedback submitted successfully!" });
       logger.info(`New feedback submitted by ${name}`);
+      if (feedback === "Bad") {
+        const mailOptions = {
+          from: process.env.MAIL_USER,
+          to: process.env.NOTIFICATION_EMAIL,
+          subject: "New Negative Feedback Received",
+          text: `A new negative feedback has been submitted by ${name} in batch ${batch}. Comments: ${comments}`,
+        };
+
+        transporter.sendMail(mailOptions, (error, info) => {
+          if (error) {
+            console.error("Error sending email:", error);
+            logger.error("Error sending email", error);
+          } else {
+            console.log("Email sent: " + info.response);
+            logger.info("Email sent: " + info.response);
+          }
+        });
+      }
     } catch (error) {
       console.error("Error submitting feedback:", error);
       logger.error("Error submitting feedback", error);
@@ -67,7 +96,6 @@ router.get("/", protect, async (req, res) => {
     if (feedback) {
       query.feedback = feedback;
     }
-
     const feedbackData = await Feedback.find(query);
     res.json(feedbackData);
     logger.info(
