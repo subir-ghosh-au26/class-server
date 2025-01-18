@@ -6,7 +6,7 @@ const FeedbackSchema = new mongoose.Schema({
     mobile: { type: String, required: true},
     feedback: { type: String, required: true },
     comments: { type: String },
-    photo: { type: Buffer, required: true},
+    photo: { type: String, required:true },
     photoType: { type: String },
   createdAt: { type: Date, default: Date.now }
 });
